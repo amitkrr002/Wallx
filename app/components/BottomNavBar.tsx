@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { View, TouchableOpacity, Pressable, Modal } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Pressable,
+  Modal,
+  TextInput,
+} from "react-native";
 import { Text } from "react-native";
 import { useRouter } from "expo-router";
 import { Home, Grid, Heart, Settings, Plus } from "lucide-react-native";
@@ -7,19 +13,35 @@ import * as Haptics from "expo-haptics";
 
 interface BottomNavBarProps {
   currentRoute?: string;
+  onSearchPress?: () => void;
 }
 
-const BottomNavBar = ({ currentRoute = "home" }: BottomNavBarProps) => {
+const BottomNavBar = ({
+  currentRoute = "home",
+  onSearchPress,
+}: BottomNavBarProps) => {
   const router = useRouter();
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [searchPrompt, setSearchPrompt] = useState("");
 
   const handleNavigation = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (route === "ai-search") {
-      setIsSearchModalOpen(true);
+      if (onSearchPress) {
+        onSearchPress();
+      } else {
+        setIsSearchModalOpen(true);
+      }
     } else {
       router.push(`/${route === "home" ? "" : route}`);
     }
+  };
+
+  const handleGenerateWallpaper = () => {
+    // In a real app, this would call an API to generate a wallpaper
+    console.log(`Generating wallpaper with prompt: ${searchPrompt}`);
+    setSearchPrompt("");
+    setIsSearchModalOpen(false);
   };
 
   return (
@@ -101,7 +123,7 @@ const BottomNavBar = ({ currentRoute = "home" }: BottomNavBarProps) => {
         />
       </View>
 
-      {/* Temporary placeholder for AISearchModal */}
+      {/* AI Search Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -121,9 +143,13 @@ const BottomNavBar = ({ currentRoute = "home" }: BottomNavBarProps) => {
             <Text className="text-gray-600 dark:text-gray-400 mb-4">
               Enter a prompt to generate a unique AI wallpaper
             </Text>
-            <View className="h-12 bg-gray-100 dark:bg-gray-800 rounded-full px-4 mb-4 justify-center">
-              <Text className="text-gray-400">Type your prompt here...</Text>
-            </View>
+            <TextInput
+              className="h-12 bg-gray-100 dark:bg-gray-800 rounded-full px-4 mb-4 text-gray-800 dark:text-white"
+              placeholder="Type your prompt here..."
+              placeholderTextColor="#9ca3af"
+              value={searchPrompt}
+              onChangeText={setSearchPrompt}
+            />
             <View className="flex-row flex-wrap gap-2 mb-6">
               {[
                 "Nature",
@@ -133,15 +159,21 @@ const BottomNavBar = ({ currentRoute = "home" }: BottomNavBarProps) => {
                 "Neon",
                 "Cyberpunk",
               ].map((keyword) => (
-                <View
+                <TouchableOpacity
                   key={keyword}
                   className="bg-gray-200 dark:bg-gray-700 rounded-full px-3 py-1"
+                  onPress={() => setSearchPrompt(keyword)}
                 >
                   <Text className="text-sm dark:text-white">{keyword}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity className="bg-blue-500 h-12 rounded-full items-center justify-center">
+            <TouchableOpacity
+              className="bg-blue-500 h-12 rounded-full items-center justify-center"
+              onPress={handleGenerateWallpaper}
+              disabled={!searchPrompt.trim()}
+              style={{ opacity: searchPrompt.trim() ? 1 : 0.7 }}
+            >
               <Text className="text-white font-medium">Generate Wallpaper</Text>
             </TouchableOpacity>
           </View>

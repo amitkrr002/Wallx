@@ -6,113 +6,104 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { MasonryFlashList } from "@shopify/flash-list";
+// import { MasonryFlashList } from "@shopify/flash-list";
 import Animated, {
   FadeInDown,
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import WallpaperCard from "./WallpaperCard";
-
-interface Wallpaper {
-  id: string;
-  imageUrl: string;
-  title: string;
-  isFavorite: boolean;
-  category?: string;
-}
+import {
+  WallpaperItem,
+  getRandomPhotos,
+  getPhotosByCategory,
+} from "../services/unsplash";
 
 interface WallpaperGridProps {
   title?: string;
-  wallpapers?: Wallpaper[];
+  wallpapers?: WallpaperItem[];
   isLoading?: boolean;
   onRefresh?: () => void;
   onEndReached?: () => void;
   category?: string;
+  onFavoriteToggle?: (id: string) => void;
 }
 
 const WallpaperGrid = ({
   title = "Trending Wallpapers",
-  wallpapers = [
-    {
-      id: "wall-1",
-      imageUrl:
-        "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400&q=80",
-      title: "Abstract Wave",
-      isFavorite: false,
-      category: "Abstract",
-    },
-    {
-      id: "wall-2",
-      imageUrl:
-        "https://images.unsplash.com/photo-1516617442634-75371039cb3a?w=400&q=80",
-      title: "Minimal Dark",
-      isFavorite: true,
-      category: "Minimal",
-    },
-    {
-      id: "wall-3",
-      imageUrl:
-        "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=400&q=80",
-      title: "Mountain Sunset",
-      isFavorite: false,
-      category: "Nature",
-    },
-    {
-      id: "wall-4",
-      imageUrl:
-        "https://images.unsplash.com/photo-1604076913837-52ab5629fba9?w=400&q=80",
-      title: "Neon City",
-      isFavorite: false,
-      category: "Urban",
-    },
-    {
-      id: "wall-5",
-      imageUrl:
-        "https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=400&q=80",
-      title: "Geometric Art",
-      isFavorite: false,
-      category: "Abstract",
-    },
-    {
-      id: "wall-6",
-      imageUrl:
-        "https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=400&q=80",
-      title: "Colorful Gradient",
-      isFavorite: false,
-      category: "Abstract",
-    },
-  ],
+  wallpapers,
   isLoading = false,
   onRefresh = () => {},
   onEndReached = () => {},
   category = "",
+  onFavoriteToggle,
 }: WallpaperGridProps) => {
   const [refreshing, setRefreshing] = useState(false);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [localWallpapers, setLocalWallpapers] = useState<WallpaperItem[]>([]);
+  const [loading, setLoading] = useState(isLoading);
 
   // Initialize favorites from wallpapers prop
   useEffect(() => {
-    const initialFavorites: Record<string, boolean> = {};
-    wallpapers.forEach((wallpaper) => {
-      if (wallpaper.isFavorite) {
-        initialFavorites[wallpaper.id] = true;
-      }
-    });
-    setFavorites(initialFavorites);
-  }, []);
+    if (wallpapers) {
+      setLocalWallpapers(wallpapers);
+      const initialFavorites: Record<string, boolean> = {};
+      wallpapers.forEach((wallpaper) => {
+        if (wallpaper.isFavorite) {
+          initialFavorites[wallpaper.id] = true;
+        }
+      });
+      setFavorites(initialFavorites);
+    } else {
+      // If no wallpapers provided, fetch from Unsplash
+      fetchWallpapers();
+    }
+  }, [wallpapers]);
 
-  const handleRefresh = () => {
+  const fetchWallpapers = async () => {
+    setLoading(true);
+    try {
+      let photos;
+      if (category) {
+        photos = await getPhotosByCategory(category);
+      } else {
+        photos = await getRandomPhotos(20);
+      }
+      setLocalWallpapers(photos);
+    } catch (error) {
+      console.error("Error fetching wallpapers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
     setRefreshing(true);
-    onRefresh();
-    // Simulate refresh completion after 1.5 seconds
-    setTimeout(() => setRefreshing(false), 1500);
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      await fetchWallpapers();
+    }
+    setRefreshing(false);
   };
 
   const handleFavoriteToggle = (id: string) => {
-    setFavorites((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    if (onFavoriteToggle) {
+      onFavoriteToggle(id);
+    } else {
+      setFavorites((prev) => ({
+        ...prev,
+        [id]: !prev[id],
+      }));
+
+      // Update the local wallpapers list
+      setLocalWallpapers((prev) =>
+        prev.map((wallpaper) =>
+          wallpaper.id === id
+            ? { ...wallpaper, isFavorite: !favorites[id] }
+            : wallpaper,
+        ),
+      );
+    }
   };
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
@@ -120,7 +111,13 @@ const WallpaperGrid = ({
   });
 
   // Render a grid item
-  const renderItem = ({ item, index }: { item: Wallpaper; index: number }) => (
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: WallpaperItem;
+    index: number;
+  }) => (
     <Animated.View
       entering={FadeInDown.delay(index * 100).springify()}
       className="flex-1"
@@ -129,7 +126,7 @@ const WallpaperGrid = ({
         id={item.id}
         imageUrl={item.imageUrl}
         title={item.title}
-        isFavorite={favorites[item.id] || false}
+        isFavorite={favorites[item.id] || item.isFavorite || false}
         onFavoriteToggle={handleFavoriteToggle}
       />
     </Animated.View>
@@ -145,16 +142,16 @@ const WallpaperGrid = ({
         </View>
       )}
 
-      {isLoading && wallpapers.length === 0 ? (
+      {(loading || isLoading) && localWallpapers.length === 0 ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#6366f1" />
+          <ActivityIndicator size="large" color="#3b82f6" />
           <Text className="mt-4 text-gray-600 dark:text-gray-400">
             Loading wallpapers...
           </Text>
         </View>
       ) : (
         <Animated.FlatList
-          data={wallpapers}
+          data={localWallpapers}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           numColumns={2}

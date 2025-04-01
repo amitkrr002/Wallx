@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity, Text } from "react-native";
+import { View, TouchableOpacity, Text, Platform } from "react-native";
 import { Image } from "expo-image";
 import { Heart } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -26,7 +26,7 @@ const WallpaperCard = ({
     router.push(`/wallpaper/${id}`);
   };
 
-  const handleFavoritePress = (e: any) => {
+  const handleFavoritePress = (e: React.TouchableEvent) => {
     e.stopPropagation();
     onFavoriteToggle(id);
   };
@@ -35,7 +35,21 @@ const WallpaperCard = ({
     <TouchableOpacity
       onPress={handlePress}
       className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden m-1 shadow-md"
-      style={{ width: 180, height: 320 }}
+      style={{
+        width: 180,
+        height: 320,
+        ...Platform.select({
+          ios: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          },
+          android: {
+            elevation: 3,
+          },
+        }),
+      }}
     >
       <View className="relative w-full h-full">
         <Image
@@ -44,7 +58,7 @@ const WallpaperCard = ({
           contentFit="cover"
           transition={300}
         />
-        <View className="absolute bottom-0 left-0 right-0 p-2 bg-black/30 backdrop-blur-sm">
+        <View className="absolute bottom-0 left-0 right-0 p-2 bg-black/40 backdrop-blur-sm">
           <Text className="text-white font-medium text-sm">{title}</Text>
         </View>
         <TouchableOpacity
