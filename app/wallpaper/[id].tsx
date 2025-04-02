@@ -43,9 +43,12 @@ export default function WallpaperDetailScreen() {
     if (id) {
       fetchWallpaper();
       // Extract search query from ID if it contains a search term
-      if (id.includes("search-")) {
-        const query = id.replace("search-", "").replace(/-/g, " ");
-        setSearchQuery(query);
+      if (typeof id === "string" && id.startsWith("search-")) {
+        const query = id.replace(/^search-/, "").replace(/-/g, " ");
+        setSearchQuery(query.charAt(0).toUpperCase() + query.slice(1));
+      } else {
+        // Clear search query if not a search result
+        setSearchQuery("");
       }
     }
   }, [id]);
@@ -54,8 +57,8 @@ export default function WallpaperDetailScreen() {
     setIsLoading(true);
     try {
       // If ID starts with "search-", it's a search result
-      if (id && id.toString().startsWith("search-")) {
-        const query = id.toString().replace("search-", "").replace(/-/g, " ");
+      if (id && typeof id === "string" && id.startsWith("search-")) {
+        const query = id.replace("search-", "").replace(/-/g, " ");
         const { results } = await searchPhotos(query, 1, 1);
         if (results.length > 0) {
           setWallpaper({
@@ -81,7 +84,9 @@ export default function WallpaperDetailScreen() {
 
   const handleFavoriteToggle = () => {
     if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch((err) => {
+        console.log("Haptics error:", err);
+      });
     }
     setIsFavorite(!isFavorite);
     // In a real app, you would save this to storage or API
@@ -89,7 +94,11 @@ export default function WallpaperDetailScreen() {
 
   const handleDownload = () => {
     if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        (err) => {
+          console.log("Haptics error:", err);
+        },
+      );
     }
     Alert.alert(
       "Download Started",
@@ -123,7 +132,9 @@ export default function WallpaperDetailScreen() {
             if (Platform.OS !== "web") {
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success,
-              );
+              ).catch((err) => {
+                console.log("Haptics error:", err);
+              });
             }
             Alert.alert("Success", "Wallpaper set as home screen");
           },
@@ -134,7 +145,9 @@ export default function WallpaperDetailScreen() {
             if (Platform.OS !== "web") {
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success,
-              );
+              ).catch((err) => {
+                console.log("Haptics error:", err);
+              });
             }
             Alert.alert("Success", "Wallpaper set as lock screen");
           },
@@ -145,7 +158,9 @@ export default function WallpaperDetailScreen() {
             if (Platform.OS !== "web") {
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success,
-              );
+              ).catch((err) => {
+                console.log("Haptics error:", err);
+              });
             }
             Alert.alert(
               "Success",

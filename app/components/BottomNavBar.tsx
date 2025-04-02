@@ -5,6 +5,7 @@ import {
   Pressable,
   Modal,
   TextInput,
+  Platform,
 } from "react-native";
 import { Text } from "react-native";
 import { useRouter } from "expo-router";
@@ -25,7 +26,16 @@ const BottomNavBar = ({
   const [searchPrompt, setSearchPrompt] = useState("");
 
   const handleNavigation = (route: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Only use haptics on native platforms
+    if (Platform.OS !== "web") {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch((err) => {
+          console.log("Haptics error:", err);
+        });
+      } catch (error) {
+        console.log("Haptics not available:", error);
+      }
+    }
     if (route === "ai-search") {
       if (onSearchPress) {
         onSearchPress();
@@ -40,6 +50,11 @@ const BottomNavBar = ({
   const handleGenerateWallpaper = () => {
     // In a real app, this would call an API to generate a wallpaper
     console.log(`Generating wallpaper with prompt: ${searchPrompt}`);
+
+    // Navigate to a search result page with the prompt
+    const searchId = `search-${searchPrompt.toLowerCase().replace(/\s+/g, "-")}`;
+    router.push(`/wallpaper/${searchId}`);
+
     setSearchPrompt("");
     setIsSearchModalOpen(false);
   };

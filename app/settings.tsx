@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import {
   ChevronRight,
@@ -17,7 +19,10 @@ import {
   Trash,
   Info,
   LogOut,
+  User,
+  Mail,
 } from "lucide-react-native";
+import { useAuth } from "../src/contexts/AuthContext";
 import BottomNavBar from "./components/BottomNavBar";
 
 interface SettingsSectionProps {
@@ -91,9 +96,17 @@ const SettingsItem = ({
 );
 
 export default function SettingsScreen() {
+  const { user, signOut, isLoading } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
   const [isAutoDownloadEnabled, setIsAutoDownloadEnabled] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setUserEmail(user.email);
+    }
+  }, [user]);
 
   const handleClearCache = () => {
     Alert.alert(
@@ -119,8 +132,13 @@ export default function SettingsScreen() {
       {
         text: "Log Out",
         style: "destructive",
-        onPress: () => {
-          // Logout logic would go here
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            console.error("Error signing out:", error);
+            Alert.alert("Error", "Failed to sign out. Please try again.");
+          }
         },
       },
     ]);
@@ -135,6 +153,35 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
+        {/* User Profile Section */}
+        {user ? (
+          <View className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden mb-6">
+            <View className="p-4 items-center">
+              <View className="bg-blue-100 dark:bg-blue-900 rounded-full p-4 mb-3">
+                <User size={40} color="#3b82f6" />
+              </View>
+              <Text className="text-xl font-bold text-gray-800 dark:text-white">
+                {userEmail?.split("@")[0] || "User"}
+              </Text>
+              <Text className="text-gray-500 dark:text-gray-400 mt-1">
+                {userEmail || "Loading..."}
+              </Text>
+            </View>
+          </View>
+        ) : isLoading ? (
+          <View className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden mb-6 p-4 items-center justify-center">
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text className="text-gray-500 dark:text-gray-400 mt-2">
+              Loading profile...
+            </Text>
+          </View>
+        ) : (
+          <View className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden mb-6 p-4 items-center">
+            <Text className="text-gray-800 dark:text-white text-lg font-medium">
+              Not signed in
+            </Text>
+          </View>
+        )}
         <SettingsSection title="APPEARANCE">
           <SettingsItem
             icon={

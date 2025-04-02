@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 // import { MasonryFlashList } from "@shopify/flash-list";
 import Animated, {
@@ -41,13 +42,20 @@ const WallpaperGrid = ({
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [localWallpapers, setLocalWallpapers] = useState<WallpaperItem[]>([]);
   const [loading, setLoading] = useState(isLoading);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize favorites from wallpapers prop
   useEffect(() => {
     if (wallpapers) {
-      setLocalWallpapers(wallpapers);
+      // Ensure we have unique wallpapers by filtering out duplicates by ID
+      const uniqueWallpapers = wallpapers.filter(
+        (wallpaper, index, self) =>
+          index === self.findIndex((w) => w.id === wallpaper.id),
+      );
+
+      setLocalWallpapers(uniqueWallpapers);
       const initialFavorites: Record<string, boolean> = {};
-      wallpapers.forEach((wallpaper) => {
+      uniqueWallpapers.forEach((wallpaper) => {
         if (wallpaper.isFavorite) {
           initialFavorites[wallpaper.id] = true;
         }
@@ -61,6 +69,7 @@ const WallpaperGrid = ({
 
   const fetchWallpapers = async () => {
     setLoading(true);
+    setError(null);
     try {
       let photos;
       if (category) {
@@ -71,20 +80,28 @@ const WallpaperGrid = ({
       setLocalWallpapers(photos);
     } catch (error) {
       console.error("Error fetching wallpapers:", error);
+      setError("Failed to load wallpapers. Pull down to try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (onRefresh) {
-      onRefresh();
-    } else {
-      await fetchWallpapers();
+    setError(null);
+    try {
+      if (onRefresh) {
+        await Promise.resolve(onRefresh());
+      } else {
+        await fetchWallpapers();
+      }
+    } catch (error) {
+      console.error("Error refreshing wallpapers:", error);
+      setError("Failed to refresh. Please try again later.");
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
-  };
+  }, [onRefresh]);
 
   const handleFavoriteToggle = (id: string) => {
     if (onFavoriteToggle) {
@@ -159,17 +176,33 @@ const WallpaperGrid = ({
           onScroll={scrollHandler}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={["#3b82f6"]}
+              tintColor="#3b82f6"
+              title="Pull to refresh..."
+              titleColor="#6b7280"
+            />
           }
           onEndReached={onEndReached}
           onEndReachedThreshold={0.5}
           ListEmptyComponent={
             <View className="flex-1 justify-center items-center p-8">
-              <Text className="text-gray-600 dark:text-gray-400 text-center">
-                {category
-                  ? `No wallpapers found in ${category}`
-                  : "No wallpapers found"}
-              </Text>
+              {error ? (
+                <>
+                  <Text className="text-red-500 text-center mb-2">{error}</Text>
+                  <Text className="text-gray-600 dark:text-gray-400 text-center">
+                    Pull down to refresh
+                  </Text>
+                </>
+              ) : (
+                <Text className="text-gray-600 dark:text-gray-400 text-center">
+                  {category
+                    ? `No wallpapers found in ${category}`
+                    : "No wallpapers found"}
+                </Text>
+              )}
             </View>
           }
         />

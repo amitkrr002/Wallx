@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, SafeAreaView, StatusBar, Text } from "react-native";
+import {
+  View,
+  SafeAreaView,
+  StatusBar,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../src/contexts/AuthContext";
+import { useRouter } from "expo-router";
 import WallpaperGrid from "./components/WallpaperGrid";
 import BottomNavBar from "./components/BottomNavBar";
 import AISearchModal from "./components/AISearchModal";
@@ -12,12 +20,31 @@ import {
 
 // Create a simple header component directly in this file
 const AppHeader = () => {
+  const { user } = useAuth();
+  const router = useRouter();
+
   return (
     <View className="w-full h-14 px-4 flex-row items-center justify-between bg-white dark:bg-gray-800">
       <Text className="text-xl font-bold text-gray-800 dark:text-white">
         WallX
       </Text>
-      <View className="w-8 h-8" />
+      {user ? (
+        <TouchableOpacity
+          onPress={() => router.push("/settings")}
+          className="bg-blue-100 dark:bg-blue-900 rounded-full h-8 w-8 items-center justify-center"
+        >
+          <Text className="text-blue-500 dark:text-blue-300 font-bold">
+            {user.email?.charAt(0).toUpperCase() || "U"}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={() => router.push("/auth")}
+          className="bg-blue-500 rounded-full px-3 py-1"
+        >
+          <Text className="text-white font-medium text-sm">Sign In</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -57,7 +84,15 @@ export default function HomeScreen() {
   const handleLoadMore = async () => {
     try {
       const additionalPhotos = await getRandomPhotos(10);
-      setWallpapers((prev) => [...prev, ...additionalPhotos]);
+
+      // Ensure we don't add duplicate photos
+      setWallpapers((prev) => {
+        const existingIds = new Set(prev.map((item) => item.id));
+        const uniqueNewPhotos = additionalPhotos.filter(
+          (photo) => !existingIds.has(photo.id),
+        );
+        return [...prev, ...uniqueNewPhotos];
+      });
     } catch (error) {
       console.error("Error loading more wallpapers:", error);
     }
